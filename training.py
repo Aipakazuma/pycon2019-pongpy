@@ -54,15 +54,26 @@ class GymPong(Pong):
     def update(self):
 
         self.board.update()
+        before_reward = 0
+        reward = 0
+        done = False
 
         # ゲーム終了条件
+        # action = self.board.p1.
+        # reward = self.board.p1.score
+        # reward -= before_reward
         if self.board.p1.score >= SET_POINT or self.board.p2.score >= SET_POINT:
             # デュース判定
             if abs(self.board.p1.score - self.board.p2.score) >= 2:
                 print(f'{self.board.p1.score_label} {self.board.p2.score_label}')
                 # 最新のPyxel だと quit したときに Python 自体 exit してしまう
                 # pyxel.quit()
+                done = True
                 self.init()
+
+                done = False
+        
+        # before_reward = reward
 
 if __name__ == '__main__':
     trainer = Trainer()

@@ -21,7 +21,7 @@ class ChallengerTeam(Team):
         前衛の青色のバーをコントロールします。
         '''
         action = self.agent.action(info, state)
-        print('atk', action)
+        print('atk', info, state)
         return action
 
     def def_action(self, info: GameInfo, state: State) -> int:
@@ -29,5 +29,5 @@ class ChallengerTeam(Team):
         後衛のオレンジ色のバーをコントロールします。
         '''
         action = self.agent.action(info, state)
-        print('def', action)
+        print('def', info, state)
         return action
