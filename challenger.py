@@ -6,6 +6,8 @@ from pongpy.models.state import State
 
 from rl.preprocessing import preprocessing_state
 
+import numpy as np
+
 
 PLAYER_NAME = os.environ['PLAYER_NAME']
 
@@ -32,11 +34,13 @@ class ChallengerTeam(Team):
         self.state = state
         _state = preprocessing_state(state)
 
-        action = self.agent.action(info, _state)
+        q_values = self.agent.model.predict(np.array([_state]))
+        action = self.agent.action(q_values[0])
         self.model_output_action = action
-        self._atk_action = action
-        self._def_action = action
-        return action
+        _atk, _def = self.agent.policy.inv_action(action)
+        self._atk_action = _atk
+        self._def_action = _def
+        return self._atk_action
 
     def def_action(self, info: GameInfo, state: State) -> int:
         '''

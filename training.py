@@ -8,6 +8,7 @@ from pongpy.cmd import dynamic_import
 from rl.agent import Agent
 from rl.preprocessing import preprocessing_state
 from rl.memory import Memory
+from rl.policy import EpsGreedy
 from rl.get_model import v1
 
 import pyxel
@@ -17,7 +18,6 @@ import time
 
 class Trainer():
     def __init__(self):
-        self.agent = Agent()
         # フィールド内の相対座標
         # 左上が (0, 0) 。
         # 下に行くほど y が、右に行くほど x が増加する。
@@ -36,9 +36,12 @@ class Trainer():
         # output
         # とりあえず全部どっちかに動かす.
         # [-1, -1], [-1, 1], [1, -1], [1, 1]
-        self.model = v1(input_shape=(10,),
-                        n_output=4)
-        self.memory = Memory(max_size=100000)
+        model = v1(input_shape=(10,),
+                   n_output=4)
+        self.agent = Agent(model,
+                           memory=Memory(max_size=100000),
+                           policy=EpsGreedy(eps=0.5),
+                           batch_size=128)
         team1_path = 'challenger:ChallengerTeam'
         team2_path = 'enemy:EnemyTeam'
         self.team1 = dynamic_import(team1_path)
@@ -55,6 +58,10 @@ class Trainer():
 class GymPong(Pong):
     def __init__(self, trainer: Trainer, left_team: Team, right_team: Team):
         self.trainer = trainer
+        self.episode = 0
+        self.steps = 0
+        self.before_reward = 0
+        self.total_rewards = 0
         super().__init__(left_team, right_team)
 
     def init(self):
@@ -62,6 +69,9 @@ class GymPong(Pong):
             # init_sounds()
             # self.left_team = left_team
             # self.right_team = right_team
+            self.before_reward = 0
+            self.steps = 0
+            self.total_rewards = 0
             self.board = Board(BOARD_WIDTH, BOARD_HEIGHT,
                                PADDING, PADDING, left_team=self.left_team,
                                right_team=self.right_team)
@@ -79,18 +89,17 @@ class GymPong(Pong):
         if self.board.p1.team.state is not None:
             state = self.board.p1.team.state
 
-        before_reward = 0
-        reward = 0
         done = False
 
         # actionを実行する.
         self.board.update()
 
         # ゲーム終了条件
-        # action = self.board.p1.
-        # reward = self.board.p1.score
-        # reward -= before_reward
         action = self.board.p1.team.model_output_action
+        if state is None:
+            reward = 0
+        else:
+            reward = state.mine_team.score - self.before_reward
 
         # update後は状態が変更になっているので取得する.
         # FIXME: クソコード.
@@ -100,7 +109,12 @@ class GymPong(Pong):
         else:
             next_state = self.board.p1.team.state
 
+        if state.mine_team.score > 0:
+            self.before_reward = state.mine_team.score
+
+        self.steps += 1
         if state.time != 0:
+            SET_POINT = 3
             if self.board.p1.score >= SET_POINT or self.board.p2.score >= SET_POINT:
                 # デュース判定
                 if abs(self.board.p1.score - self.board.p2.score) >= 2:
@@ -109,18 +123,30 @@ class GymPong(Pong):
                     # 最新のPyxel だと quit したときに Python 自体 exit してしまう
                     # pyxel.quit()
                     done = True
-                    self.init()
+                    self.episode += 1
+                    if self.board.p1.score > self.board.p2.score:
+                        reward += 10
 
             # memoryを追加
             _state = preprocessing_state(state)
             _next_state = preprocessing_state(next_state)
-            self.trainer.memory.add(
-                [_state, _next_state, action, reward, done])
+            self.trainer.agent.memory.add([_state, _next_state,
+                                           action, reward, done])
 
+            self.total_rewards += reward
             if done:
                 # model update
                 done = False
-                print(len(self.trainer.memory.buffer))
+                _len = len(self.trainer.agent.memory.buffer)
+                print('episode: {}, memory_size: {}, total_reward: {}'.format(self.episode,
+                                                                              _len,
+                                                                              self.total_rewards))
+                self.trainer.agent.update()
+
+                if self.episode % 10 == 0:
+                    self.trainer.agent.target_update()
+
+                self.init()
 
 
 if __name__ == '__main__':
