@@ -34,9 +34,8 @@ class ChallengerTeam(Team):
         self.gaem_state = info
         self.state = state
         _state = preprocessing_state(state)
-        print(_state)
 
-        if self.agent.steps % 15 == 0:
+        if self.agent.steps % 10 == 0:
             q_values = self.agent.model.predict(np.array([_state]))
             action = self.agent.action(q_values[0])
             self.before_action = action

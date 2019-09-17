@@ -44,8 +44,13 @@ class Trainer():
                    n_output=4)
         self.agent = Agent(model,
                            memory=Memory(max_size=100000),
-                           policy=EpsGreedy(eps=0.5),
+                           policy=EpsGreedy(eps=0.3),
                            batch_size=512)
+
+        _path = os.path.join('model', '20190917_140858', 'weights_200.h5')
+        self.agent.model.load_weights(_path)
+        self.agent.target_update()
+
         team1_path = 'challenger:ChallengerTeam'
         team2_path = 'enemy:EnemyTeam'
         self.team1 = dynamic_import(team1_path)
@@ -139,7 +144,7 @@ class GymPong(Pong):
 
             self.total_rewards += reward
             self.before_reward = state.mine_team.score
-            if done:
+            if done and self.trainer.agent.trainable:
                 # model update
                 done = False
                 _len = len(self.trainer.agent.memory.buffer)
@@ -156,7 +161,7 @@ class GymPong(Pong):
                 self.writer.add_summary(tb_summary.scalar_pb('learning_reward', getted_reward),
                     global_step=self.episode)
 
-                if self.episode % 10 == 0:
+                if self.episode % 100 == 0:
                     self.trainer.agent.target_update()
                 
                 if self.episode % 100 == 0:

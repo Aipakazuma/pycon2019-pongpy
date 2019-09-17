@@ -5,6 +5,7 @@ import numpy as np
 class Agent():
     def __init__(self, model, policy=None,
                  memory=None, batch_size=256):
+        self.trainable = True
         self.model = model
         self.policy = policy
         self.memory = memory
@@ -28,6 +29,10 @@ class Agent():
         return self.policy.select_action(q_value)
 
     def update(self):
+        memory_len = len(self.memory.buffer) 
+        if memory_len < self.batch_size:
+            return 0, 0
+
         experiences, idxes = self.memory.sample(self.batch_size)
         states = np.array([e[0] for e in experiences])
         next_states = np.array([e[1] for e in experiences])
@@ -38,10 +43,15 @@ class Agent():
         rewards = 0
         n_steps = 20
         memory_len = len(self.memory.buffer) 
+        n_steps_range = list(range(n_steps))
         for i, (e, idx) in enumerate(zip(experiences, idxes)):
             reward = e[3]
-            reward += sum([(self.gamma ** n_steps) * self.memory.buffer[idx + j][3] for j in range(n_steps) \
-                           if memory_len > (idx + j)])
+            stopper = np.argmax([self.memory.buffer[idx + j][4] for j in n_steps_range \
+                if memory_len > (idx + j)])
+            if stopper != 0:
+                reward += sum([(self.gamma ** n_steps) * self.memory.buffer[idx + j][3] for j in range(n_steps) \
+                            if memory_len > (idx + j) and stopper < j])
+
             rewards += reward
             if not e[4]:
                 if self.dueling_dqn:
