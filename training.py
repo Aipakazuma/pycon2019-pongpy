@@ -45,7 +45,7 @@ class Trainer():
         self.agent = Agent(model,
                            memory=Memory(max_size=100000),
                            policy=EpsGreedy(eps=0.5),
-                           batch_size=128)
+                           batch_size=512)
         team1_path = 'challenger:ChallengerTeam'
         team2_path = 'enemy:EnemyTeam'
         self.team1 = dynamic_import(team1_path)
