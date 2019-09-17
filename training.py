@@ -55,7 +55,7 @@ class Trainer():
 
     def train(self):
         # 本当はここで実行したかったけど
-        # 返り値が帰ってこないですべてgame objでやる.
+        # 返り値が帰ってこないのですべてgame objでやる.
         self.game.update()
 
 
@@ -67,16 +67,14 @@ class GymPong(Pong):
         self.before_reward = 0
         self.total_rewards = 0
 
-        _date_str = datetime.now().strftime('%Y%m%d_%H%M%S')
-        log_path = os.path.join('logs', _date_str)
+        self._date_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+        log_path = os.path.join('logs', self._date_str)
+        os.mkdir(os.path.join('model', self._date_str))
         self.writer = tf.summary.FileWriter(log_path)
         super().__init__(left_team, right_team)
 
     def init(self):
         try:
-            # init_sounds()
-            # self.left_team = left_team
-            # self.right_team = right_team
             self.before_reward = 0
             self.steps = 0
             self.total_rewards = 0
@@ -85,11 +83,8 @@ class GymPong(Pong):
                                right_team=self.right_team)
             self.board.p1.score = 0
             self.board.p2.score = 0
-            # play_bgm()
         except Exception as e:
             print(e)
-
-        print('### init!! ###')
 
     def update(self):
 
@@ -98,16 +93,19 @@ class GymPong(Pong):
             state = self.board.p1.team.state
 
         done = False
+        reward = 0
 
         # actionを実行する.
         self.board.update()
 
+        # scoreをとったときにしかrewardを与えない
+        # scoreはカウントされていく
+        # state.mine_team.score - before state.mine_team.score
+        if state is not None:
+            reward = state.mine_team.score - self.before_reward
+
         # ゲーム終了条件
         action = self.board.p1.team.model_output_action
-        if state is None:
-            reward = 0
-        else:
-            reward = state.mine_team.score - self.before_reward
 
         # update後は状態が変更になっているので取得する.
         # FIXME: クソコード.
@@ -116,9 +114,6 @@ class GymPong(Pong):
             state = self.board.p1.team.state
         else:
             next_state = self.board.p1.team.state
-
-        if state.mine_team.score > 0:
-            self.before_reward = state.mine_team.score
 
         self.steps += 1
         if state.time != 0:
@@ -142,6 +137,7 @@ class GymPong(Pong):
                                            action, reward, done])
 
             self.total_rewards += reward
+            self.before_reward = state.mine_team.score
             if done:
                 # model update
                 done = False
@@ -161,6 +157,11 @@ class GymPong(Pong):
 
                 if self.episode % 10 == 0:
                     self.trainer.agent.target_update()
+                
+                if self.episode % 100 == 0:
+                    save_path = os.path.join('model', self._date_str,
+                        'weights_{}.h5'.format(self.episode))
+                    self.trainer.agent.model.save_weights(save_path)
 
                 self.init()
 
