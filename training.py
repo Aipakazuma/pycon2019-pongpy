@@ -62,8 +62,8 @@ class Trainer():
 class GymPong(Pong):
     def __init__(self, trainer: Trainer, left_team: Team, right_team: Team):
         self.trainer = trainer
-        self.episode = 0
         self.steps = 0
+        self.episode = 0
         self.before_reward = 0
         self.total_rewards = 0
 
@@ -116,6 +116,7 @@ class GymPong(Pong):
             next_state = self.board.p1.team.state
 
         self.steps += 1
+        self.trainer.agent.steps += 1
         if state.time != 0:
             SET_POINT = 3
             if self.board.p1.score >= SET_POINT or self.board.p2.score >= SET_POINT:

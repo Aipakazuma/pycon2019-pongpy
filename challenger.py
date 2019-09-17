@@ -20,6 +20,7 @@ class ChallengerTeam(Team):
         self.model_output_action = None
         self._atk_action = 0
         self._def_action = 0
+        self.before_action = 0
         super().__init__()
 
     @property
@@ -34,12 +35,18 @@ class ChallengerTeam(Team):
         self.state = state
         _state = preprocessing_state(state)
 
-        q_values = self.agent.model.predict(np.array([_state]))
-        action = self.agent.action(q_values[0])
+        if self.agent.steps % 10 == 0:
+            q_values = self.agent.model.predict(np.array([_state]))
+            action = self.agent.action(q_values[0])
+            self.before_action = action
+        else:
+            action = self.before_action
+
         self.model_output_action = action
         _atk, _def = self.agent.policy.inv_action(action)
         self._atk_action = _atk
         self._def_action = _def
+        print(action)
         return self._atk_action
 
     def def_action(self, info: GameInfo, state: State) -> int:

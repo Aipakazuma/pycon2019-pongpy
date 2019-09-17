@@ -10,6 +10,6 @@ class Memory:
         self.buffer.append(experience)
 
     def sample(self, batch_size):
-        idx = np.random.choice(np.arange(len(self.buffer)),
+        idxes = np.random.choice(np.arange(len(self.buffer)),
                                size=batch_size, replace=False)
-        return [self.buffer[ii] for ii in idx]
+        return [self.buffer[ii] for ii in idxes], idxes

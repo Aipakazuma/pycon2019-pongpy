@@ -18,6 +18,7 @@ class Agent():
         self.batch_size = batch_size
         self.gamma = 0.99
         self.dueling_dqn = True
+        self.steps = 0
 
     def _compile(self):
         self.model.compile(optimizer=self.optimizer,
@@ -27,7 +28,7 @@ class Agent():
         return self.policy.select_action(q_value)
 
     def update(self):
-        experiences = self.memory.sample(self.batch_size)
+        experiences, idxes = self.memory.sample(self.batch_size)
         states = np.array([e[0] for e in experiences])
         next_states = np.array([e[1] for e in experiences])
 
@@ -35,14 +36,18 @@ class Agent():
         future = self.target_model.predict(next_states)
 
         rewards = 0
-        for i, e in enumerate(experiences):
+        n_steps = 20
+        memory_len = len(self.memory.buffer) 
+        for i, (e, idx) in enumerate(zip(experiences, idxes)):
             reward = e[3]
+            reward += sum([(self.gamma ** n_steps) * self.memory.buffer[idx + j][3] for j in range(n_steps) \
+                           if memory_len > (idx + j)])
             rewards += reward
             if not e[4]:
                 if self.dueling_dqn:
-                    reward += self.gamma * future[i][np.argmax(estimateds[i])]
+                    reward += (self.gamma ** n_steps) * future[i][np.argmax(estimateds[i])]
                 else:
-                    reward += self.gamma * np.max(future[i])
+                    reward += (self.gamma ** n_steps) * np.max(future[i])
 
             estimateds[i][e[2]] = reward
 
