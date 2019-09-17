@@ -12,8 +12,12 @@ from rl.policy import EpsGreedy
 from rl.get_model import v1
 
 import pyxel
+import tensorflow as tf
+import tensorboard.summary as tb_summary
 
 import time
+from datetime import datetime
+import os
 
 
 class Trainer():
@@ -62,6 +66,10 @@ class GymPong(Pong):
         self.steps = 0
         self.before_reward = 0
         self.total_rewards = 0
+
+        _date_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+        log_path = os.path.join('logs', _date_str)
+        self.writer = tf.summary.FileWriter(log_path)
         super().__init__(left_team, right_team)
 
     def init(self):
@@ -141,7 +149,15 @@ class GymPong(Pong):
                 print('episode: {}, memory_size: {}, total_reward: {}'.format(self.episode,
                                                                               _len,
                                                                               self.total_rewards))
-                self.trainer.agent.update()
+                loss, getted_reward = self.trainer.agent.update()
+                self.writer.add_summary(tb_summary.scalar_pb('loss', loss),
+                    global_step=self.episode)
+                self.writer.add_summary(tb_summary.scalar_pb('reward', self.total_rewards),
+                    global_step=self.episode)
+                self.writer.add_summary(tb_summary.scalar_pb('step_per_episode', self.steps),
+                    global_step=self.episode)
+                self.writer.add_summary(tb_summary.scalar_pb('learning_reward', getted_reward),
+                    global_step=self.episode)
 
                 if self.episode % 10 == 0:
                     self.trainer.agent.target_update()

@@ -34,8 +34,10 @@ class Agent():
         estimateds = self.model.predict(states)
         future = self.target_model.predict(next_states)
 
+        rewards = 0
         for i, e in enumerate(experiences):
             reward = e[3]
+            rewards += reward
             if not e[4]:
                 if self.dueling_dqn:
                     reward += self.gamma * future[i][np.argmax(estimateds[i])]
@@ -45,7 +47,7 @@ class Agent():
             estimateds[i][e[2]] = reward
 
         loss = self.model.train_on_batch(states, estimateds)
-        return loss
+        return loss, rewards
 
     def target_update(self):
         self.target_model.set_weights(self.model.get_weights())
